@@ -22,21 +22,8 @@
         <div style="width:100%;height:100%;" id="mapContainer"></div>
     </ons-page>
 </template>
-<template id="pageVideo.html">
-    <ons-page id="pageVideo">
-    </ons-page>
-</template>
-<template id="pageQuiz.html">
-    <ons-page id="pageQuiz">
-    </ons-page>
-</template>
-<template id="pageMapEnd.html">
-    <ons-page id="pageMapEnd">
-        <div id="mapContainerPage"></div>
-    </ons-page>
-</template>
-<template id="pageStart.html">
-    <ons-page id="pageStart" style="font-size: 7%">
+<template id="pageChapter.html">
+    <ons-page id="pageChapter" style="font-size: 7%">
         <ons-toolbar id="pageToolbar" style="height:7%;">
             <div class="center">
                 <canvas style="width:100%; height:100%" id="progressBarCanvas">
@@ -50,12 +37,15 @@
                     type="button" data-toggle="tooltip" title="Zurück zum Menü">
                 <i class="material-icons pmd-sm">home</i>
             </button>
-            <h2 style="text-align: center">Kapitel: Kapitelname</h2>
+            <h2 id="pageTitle" style="text-align: center"></h2>
             <button style="margin-right:2px"
                     class="btn pmd-tooltip btn-sm pmd-btn-fab pmd-btn-flat pmd-ripple-effect btn-default map"
                     type="button" data-toggle="tooltip" title="Karte öffnen" id="buttonMap">
                 <i class="material-icons pmd-sm">map</i>
             </button>
+        </div>
+        <div id="content" style="height:93%; padding:0!important">
+
         </div>
     </ons-page>
 </template>
@@ -69,21 +59,25 @@
     <link rel="stylesheet" href="lib/css/bootstrap.css">
     <link rel="stylesheet" href="lib/css/propeller.css">
     <link rel="stylesheet" href="lib/js/leaflet/leaflet.css"/>
+    <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <script src="lib/js/jquery.js"></script>
     <script src="lib/js/leaflet/leaflet.js"></script>
     <script src="lib/js/onsenui.min.js"></script>
     <script src="lib/js/fabric.js"></script>
     <script src="js/base.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-locatecontrol/v0.43.0/L.Control.Locate.min.js'></script>
     <title>Olympiapark - Guide</title>
 </head>
 <body>
-<ons-navigator swipeable id="myNavigator" page="pageStart.html"></ons-navigator>
+<ons-navigator swipeable id="myNavigator" page="pageChapter.html"></ons-navigator>
 </body>
 </html>
 <style>
     .home-item {
-        width  : 50%;
-        margin : 5%;
+        width: 50%;
+        margin: 5%;
     }
 </style>
 
@@ -101,7 +95,7 @@
         }
     };
 
-    var hideMenuDialog  = function (returnToHome) {
+    var hideMenuDialog = function (returnToHome) {
         document
             .getElementById('menu-dialog')
             .hide();
@@ -113,28 +107,63 @@
         map: undefined,
         mapPage: undefined,
         page: undefined,
-        wayPoints:
-            [
-                {x: 48.18497338549956, y: 11.541051864624025},
-                {x: 48.18274153384056, y: 11.545257568359377},
-                {x: 48.180337892604314, y: 11.541051864624025},
-                {x: 48.17827753898233, y: 11.54491424560547},
-                {x: 48.17621710255478, y: 11.549463272094727},
-                {x: 48.174442771499734, y: 11.55341148376465},
-                {x: 48.16986356895716, y: 11.553754806518556},
-                {x: 48.167860039256, y: 11.54963493347168},
-            ],
         wayMarker: undefined,
         init: function () {
             document.addEventListener('init', function (event) {
                 var page = event.target;
-                OlympiaGuide.Viewer.load();
-                if (page.id === 'pageStart') {
+                OlympiaGuide.Viewer.showVideoPage(0);
+                if (page.id === 'pageChapter') {
                     OlympiaGuide.Viewer.showMap(page);
                 } else if (page.id === 'pageMap') {
                     page.querySelector('ons-toolbar .center').innerHTML = page.data.title;
                 }
             });
+        },
+        showMapPage(page) {
+            let mapContainer = $('<div style="width:100%; height:90%" id="mapContainerPage"></div>');
+            OlympiaGuide.Viewer.page = page;
+            OlympiaGuide.Viewer.renderProgressCanvas();
+            $('#content').html('');
+            $('#content').append(mapContainer);
+            OlympiaGuide.Viewer.renderMap(false);
+        },
+        showVideoPage(page) {
+            OlympiaGuide.Viewer.page = page;
+            OlympiaGuide.Viewer.renderProgressCanvas();
+            let videoDiv = $('<div style="width:100%; height: 100%"><div><video style="width:100%; height: 93%" controls>' +
+                '<source src="' + OlympiaGuide.Viewer.chapterSource[page].videoSource + '" type="video/mp4">' +
+                '</video><ons-button onclick="OlympiaGuide.Viewer.showQuiz()" id="quizButton" style="width:100%; height: 7%" modifier="large">Zum Quiz</ons-button></div>');
+            $('#content').html('');
+            $('#content').append(videoDiv);
+        },
+        showQuiz() {
+            let page = OlympiaGuide.Viewer.page;
+            let quizContainer = '<ons-list>';
+            for (let q = 0; q < OlympiaGuide.Viewer.chapterSource[page].quiz.length; q++) {
+                let question = OlympiaGuide.Viewer.chapterSource[page].quiz[q].question;
+                quizContainer += '<ons-list-header>' + question + '</ons-list-header>';
+                for (let a = 0; a < OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers.length; a++) {
+                    let answer = OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers[a];
+                    let radio = '<div class="mdc-form-field">\n' +
+                        '  <div class="mdc-radio">\n' +
+                        '    <input class="mdc-radio__native-control" type="radio" id="radio_' + a + '_' + q + '" name="radios_' + q + '" checked>\n' +
+                        '    <div class="mdc-radio__background">\n' +
+                        '      <div class="mdc-radio__outer-circle"></div>\n' +
+                        '      <div class="mdc-radio__inner-circle"></div>\n' +
+                        '    </div>\n' +
+                        '    <div class="mdc-radio__ripple"></div>\n' +
+                        '  </div>\n' +
+                        '  <label for="radio-1">' + answer + '</label>\n' +
+                        '</div>';
+                    quizContainer += '<ons-list-item style="font-size:  10px">' + radio + '</ons-list-item>';
+                }
+            }
+            quizContainer += '</ons-list>';
+            quizContainer += '<ons-button onclick="OlympiaGuide.Viewer.showMapPage(' + (page + 1) + ')" modifier="large">Fertig</ons-button>';
+            OlympiaGuide.Viewer.renderProgressCanvas();
+            console.log(quizContainer);
+            $('#content').html('');
+            $('#content').append($(quizContainer));
         },
         showMap: function (page) {
             page.querySelector('#buttonMap').onclick = function () {
@@ -146,16 +175,18 @@
             };
         },
         renderMap: function (mapMenu = true) {
-            let corner1             = L.latLng(48.192583841140596, 11.56491279602051),
-                corner2             = L.latLng(48.156925112380684, 11.532726287841799),
-                bounds              = L.latLngBounds(corner1, corner2);
-            let corner3             = L.latLng(48.18397192562091, 11.55641555786133),
-                corner4             = L.latLng(48.16614266578527, 11.540322303771974),
-                bounds2             = L.latLngBounds(corner3, corner4);
+            let corner1 = L.latLng(48.192583841140596, 11.56491279602051),
+                corner2 = L.latLng(48.156925112380684, 11.532726287841799),
+                bounds = L.latLngBounds(corner1, corner2);
+            let corner3 = L.latLng(48.18397192562091, 11.55641555786133),
+                corner4 = L.latLng(48.16614266578527, 11.540322303771974),
+                bounds2 = L.latLngBounds(corner3, corner4);
             OlympiaGuide.Viewer.map = L.map(
                 mapMenu ? 'mapContainer' : 'mapContainerPage',
                 {maxBounds: bounds}
             ).fitBounds(bounds2).setMaxBounds(bounds).setMinZoom(14);
+            L.control.locate({follow: true}).addTo(OlympiaGuide.Viewer.map);
+
             L.tileLayer(
                 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiY2Fwcmlzb25uZTE0IiwiYSI6ImNrZGV3N2lqZjA3dW8ycm81MG9rdXB1Y3oifQ.W7sx_PoGrYBPaYCGLQhKzA',
                 {
@@ -164,36 +195,33 @@
                 }
             ).addTo(OlympiaGuide.Viewer.map);
             OlympiaGuide.Viewer.wayMarker = [];
-            for (let i = 0; i < OlympiaGuide.Viewer.wayPoints.length; i++) {
-                let icon                         = L.icon({
+            for (let i = 0; i < OlympiaGuide.Viewer.chapterSource.length; i++) {
+                let icon = L.icon({
                     iconUrl: 'lib/js/leaflet/images/wayMarker/number_' + (i <= OlympiaGuide.Viewer.page ? 'marked_' : '') + (i + 1) + '.png',
                     iconAnchor: [15, 10]
                 });
                 OlympiaGuide.Viewer.wayMarker[i] = L.marker(
-                    [OlympiaGuide.Viewer.wayPoints[i].x, OlympiaGuide.Viewer.wayPoints[i].y],
-                    {icon: icon, draggable: true}
+                    [OlympiaGuide.Viewer.chapterSource[i].mapX, OlympiaGuide.Viewer.chapterSource[i].mapY],
+                    {icon: icon}
                 ).addTo(OlympiaGuide.Viewer.map);
                 OlympiaGuide.Viewer.wayMarker[i].bindPopup(L.popup({autoPanPaddingTopLeft: 170}).setContent(
-                    "{Kapitel Name}"));
+                    OlympiaGuide.Viewer.chapterSource[i].name));
             }
         },
-        load: function () {
-            OlympiaGuide.Viewer.renderProgressCanvas();
-        }
-        ,
-        renderProgressCanvas: function (page = 3) {
-            OlympiaGuide.Viewer.page = page;
-            var screenWidth          = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
-            var screenHeight         = document.getElementById('progressBarCanvas').getBoundingClientRect().height;
-            var canvas               = new fabric.Canvas('progressBarCanvas');
+        renderProgressCanvas: function () {
+            let page = OlympiaGuide.Viewer.page;
+            var screenWidth = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
+            var screenHeight = document.getElementById('progressBarCanvas').getBoundingClientRect().height;
+            var canvas = new fabric.Canvas('progressBarCanvas');
+            $('#pageTitle').html(OlympiaGuide.Viewer.chapterSource[page].name);
             canvas.setWidth(screenWidth);
             canvas.setHeight(screenHeight);
-            var i             = 0;
-            var pageCount     = 8;
-            var radius        = (screenWidth * 0.8 / pageCount) / 2;
-            var margin        = screenWidth * 0.2 / 9;
-            var oneStepWidth  = radius * 2 + screenWidth * 0.2 / 9;
-            var left          = margin;
+            var i = 0;
+            var pageCount = 8;
+            var radius = (screenWidth * 0.8 / pageCount) / 2;
+            var margin = screenWidth * 0.2 / 9;
+            var oneStepWidth = radius * 2 + screenWidth * 0.2 / 9;
+            var left = margin;
             var rectangleFill = new fabric.Rect({
                 left: 0,
                 top: 0,
@@ -225,8 +253,43 @@
                 canvas.add(text);
                 i++;
             }
-        }
-        ,
+        },
+        chapterSource: [
+            {
+                name: 'Der Olympiaturm',
+                videoSource: 'PS_Olympiaturm_Video.mov',
+                mapX: 48.174222,
+                mapY: 11.554167,
+                quiz: [
+                    {
+                        question: 'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
+                        rightAnswer: 'test',
+                        answers: [
+                            'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
+                            'test',
+                            'test'
+                        ]
+                    }
+                ]
+            },
+            {
+                name: 'Der Olympiaturm2',
+                videoSource: 'PS_Olympiaturm_Video.mov',
+                mapX: 48.174225,
+                mapY: 11.554210,
+                quiz: [
+                    {
+                        question: 'frage',
+                        rightAnswer: 'test',
+                        answers: [
+                            'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
+                            'test',
+                            'test'
+                        ]
+                    }
+                ]
+            }
+        ],
     }
     ;
     OlympiaGuide.Viewer.init();
