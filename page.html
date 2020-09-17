@@ -76,8 +76,8 @@
 </html>
 <style>
     .home-item {
-        width: 50%;
-        margin: 5%;
+        width  : 50%;
+        margin : 5%;
     }
 </style>
 
@@ -95,7 +95,7 @@
         }
     };
 
-    var hideMenuDialog = function (returnToHome) {
+    var hideMenuDialog  = function (returnToHome) {
         document
             .getElementById('menu-dialog')
             .hide();
@@ -120,31 +120,39 @@
             });
         },
         showMapPage(page) {
-            let mapContainer = $('<div style="width:100%; height:90%" id="mapContainerPage"></div>');
+            let mapContainer         = $('<div style="width:100%; height:90%" id="mapContainerPage"></div>');
             OlympiaGuide.Viewer.page = page;
             OlympiaGuide.Viewer.renderProgressCanvas();
             $('#content').html('');
             $('#content').append(mapContainer);
             OlympiaGuide.Viewer.renderMap(false);
+            OlympiaGuide.Viewer.waitForMapEvent(page);
+        },
+        waitForMapEvent(page) {
+            let locationX = OlympiaGuide.Viewer.chapterSource[page].mapX;
+            let locationY = OlympiaGuide.Viewer.chapterSource[page].mapY;
+            window.navigator.geolocation
+                    .getCurrentPosition(console.log, console.log);
         },
         showVideoPage(page) {
             OlympiaGuide.Viewer.page = page;
             OlympiaGuide.Viewer.renderProgressCanvas();
-            let videoDiv = $('<div style="width:100%; height: 100%"><div><video style="width:100%; height: 93%" controls>' +
+            let videoDiv = $(
+                '<div style="width:100%; height: 100%"><div><video style="width:100%; height: 93%" controls>' +
                 '<source src="' + OlympiaGuide.Viewer.chapterSource[page].videoSource + '" type="video/mp4">' +
                 '</video><ons-button onclick="OlympiaGuide.Viewer.showQuiz()" id="quizButton" style="width:100%; height: 7%" modifier="large">Zum Quiz</ons-button></div>');
             $('#content').html('');
             $('#content').append(videoDiv);
         },
         showQuiz() {
-            let page = OlympiaGuide.Viewer.page;
+            let page          = OlympiaGuide.Viewer.page;
             let quizContainer = '<ons-list>';
             for (let q = 0; q < OlympiaGuide.Viewer.chapterSource[page].quiz.length; q++) {
                 let question = OlympiaGuide.Viewer.chapterSource[page].quiz[q].question;
                 quizContainer += '<ons-list-header>' + question + '</ons-list-header>';
                 for (let a = 0; a < OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers.length; a++) {
                     let answer = OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers[a];
-                    let radio = '<div class="mdc-form-field">\n' +
+                    let radio  = '<div class="mdc-form-field">\n' +
                         '  <div class="mdc-radio">\n' +
                         '    <input class="mdc-radio__native-control" type="radio" id="radio_' + a + '_' + q + '" name="radios_' + q + '" checked>\n' +
                         '    <div class="mdc-radio__background">\n' +
@@ -175,12 +183,12 @@
             };
         },
         renderMap: function (mapMenu = true) {
-            let corner1 = L.latLng(48.192583841140596, 11.56491279602051),
-                corner2 = L.latLng(48.156925112380684, 11.532726287841799),
-                bounds = L.latLngBounds(corner1, corner2);
-            let corner3 = L.latLng(48.18397192562091, 11.55641555786133),
-                corner4 = L.latLng(48.16614266578527, 11.540322303771974),
-                bounds2 = L.latLngBounds(corner3, corner4);
+            let corner1             = L.latLng(48.192583841140596, 11.56491279602051),
+                corner2             = L.latLng(48.156925112380684, 11.532726287841799),
+                bounds              = L.latLngBounds(corner1, corner2);
+            let corner3             = L.latLng(48.18397192562091, 11.55641555786133),
+                corner4             = L.latLng(48.16614266578527, 11.540322303771974),
+                bounds2             = L.latLngBounds(corner3, corner4);
             OlympiaGuide.Viewer.map = L.map(
                 mapMenu ? 'mapContainer' : 'mapContainerPage',
                 {maxBounds: bounds}
@@ -196,7 +204,7 @@
             ).addTo(OlympiaGuide.Viewer.map);
             OlympiaGuide.Viewer.wayMarker = [];
             for (let i = 0; i < OlympiaGuide.Viewer.chapterSource.length; i++) {
-                let icon = L.icon({
+                let icon                         = L.icon({
                     iconUrl: 'lib/js/leaflet/images/wayMarker/number_' + (i <= OlympiaGuide.Viewer.page ? 'marked_' : '') + (i + 1) + '.png',
                     iconAnchor: [15, 10]
                 });
@@ -209,19 +217,19 @@
             }
         },
         renderProgressCanvas: function () {
-            let page = OlympiaGuide.Viewer.page;
-            var screenWidth = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
+            let page         = OlympiaGuide.Viewer.page;
+            var screenWidth  = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
             var screenHeight = document.getElementById('progressBarCanvas').getBoundingClientRect().height;
-            var canvas = new fabric.Canvas('progressBarCanvas');
+            var canvas       = new fabric.Canvas('progressBarCanvas');
             $('#pageTitle').html(OlympiaGuide.Viewer.chapterSource[page].name);
             canvas.setWidth(screenWidth);
             canvas.setHeight(screenHeight);
-            var i = 0;
-            var pageCount = 8;
-            var radius = (screenWidth * 0.8 / pageCount) / 2;
-            var margin = screenWidth * 0.2 / 9;
-            var oneStepWidth = radius * 2 + screenWidth * 0.2 / 9;
-            var left = margin;
+            var i             = 0;
+            var pageCount     = 8;
+            var radius        = (screenWidth * 0.8 / pageCount) / 2;
+            var margin        = screenWidth * 0.2 / 9;
+            var oneStepWidth  = radius * 2 + screenWidth * 0.2 / 9;
+            var left          = margin;
             var rectangleFill = new fabric.Rect({
                 left: 0,
                 top: 0,
