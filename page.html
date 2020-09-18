@@ -1,8 +1,8 @@
-<template id="dialogMenu.html">
-    <ons-dialog id="menu-dialog">
+<template id="dialogMenuConfirm.html">
+    <ons-dialog id="menu-dialog-confirm">
         <div style="text-align: center; padding: 10px;">
             <p>
-                Beenden und zurück zum Hauptmenü?
+                Beenden und zur&uuml;ck zum Hauptmen&uuml;?
             </p>
             <p>
                 <ons-button onclick="hideMenuDialog(true)">Ok</ons-button>
@@ -11,11 +11,24 @@
         </div>
     </ons-dialog>
 </template>
+<template id="dialogNextChapterConfirm.html">
+    <ons-dialog id="next-chapter-dialog-confirm">
+        <div style="text-align: center; padding: 10px;">
+            <p>
+                Du musst erst zur n&auml;chsten Station laufen!
+            </p>
+            <p>
+                <ons-button onclick="hideNextChapterDialog()">Ok</ons-button>
+                <ons-button onclick="hideNextChapterDialog()">Abbrechen</ons-button>
+            </p>
+        </div>
+    </ons-dialog>
+</template>
 <template id="pageMap.html">
     <ons-page id="pageMap">
         <ons-toolbar>
             <div class="left">
-                <ons-back-button>Zurück</ons-back-button>
+                <ons-back-button>Zur&uuml;ck</ons-back-button>
             </div>
             <div class="center"></div>
         </ons-toolbar>
@@ -34,13 +47,13 @@
              style="background-color:white;height:7%;width:100%; display: flex; align-items: center; justify-content : space-between;font-size: 7%">
             <button onclick="showMenuDialog()" style="margin-left:2px"
                     class="btn pmd-tooltip btn-sm pmd-btn-fab pmd-btn-flat pmd-ripple-effect btn-default home"
-                    type="button" data-toggle="tooltip" title="Zurück zum Menü">
+                    type="button" data-toggle="tooltip" title="Zur&uuml;ck zum Men&uuml;">
                 <i class="material-icons pmd-sm">home</i>
             </button>
             <h2 id="pageTitle" style="text-align: center"></h2>
             <button style="margin-right:2px"
                     class="btn pmd-tooltip btn-sm pmd-btn-fab pmd-btn-flat pmd-ripple-effect btn-default map"
-                    type="button" data-toggle="tooltip" title="Karte öffnen" id="buttonMap">
+                    type="button" data-toggle="tooltip" title="Karte &ouml;ffnen" id="buttonMap">
                 <i class="material-icons pmd-sm">map</i>
             </button>
         </div>
@@ -75,39 +88,62 @@
 </body>
 </html>
 <style>
-    .home-item {
-        width  : 50%;
-        margin : 5%;
+    .location {
+        position: relative;
+        display: inline-block;
+    }
+
+    .location:after {
+        content: "location_on";
     }
 </style>
 
 <script>
     var showMenuDialog = function () {
-        var dialog = document.getElementById('menu-dialog');
+        var dialog = document.getElementById('menu-dialog-confirm');
 
         if (dialog) {
             dialog.show();
         } else {
-            ons.createElement('dialogMenu.html', {append: true})
+            ons.createElement('dialogMenuConfirm.html', {append: true})
+                .then(function (dialog) {
+                    dialog.show();
+                });
+        }
+    };
+    var showNextChapterDialog = function () {
+        var dialog = document.getElementById('next-chapter-dialog-confirm');
+
+        if (dialog) {
+            dialog.show();
+        } else {
+            ons.createElement('dialogNextChapterConfirm.html', {append: true})
                 .then(function (dialog) {
                     dialog.show();
                 });
         }
     };
 
-    var hideMenuDialog  = function (returnToHome) {
+    var hideMenuDialog = function (returnToHome) {
         document
-            .getElementById('menu-dialog')
+            .getElementById('menu-dialog-confirm')
             .hide();
         if (returnToHome) {
             window.location.href = "index.html"
         }
+    };
+
+    var hideNextChapterDialog = function () {
+        document
+            .getElementById('next-chapter-dialog-confirm')
+            .hide();
     };
     OlympiaGuide.Viewer = {
         map: undefined,
         mapPage: undefined,
         page: undefined,
         wayMarker: undefined,
+        reachedNextStation: false,
         init: function () {
             document.addEventListener('init', function (event) {
                 var page = event.target;
@@ -120,19 +156,21 @@
             });
         },
         showMapPage(page) {
-            let mapContainer         = $('<div style="width:100%; height:90%" id="mapContainerPage"></div>');
+            let mapContainer = $('<div style="width:100%; height:93%" id="mapContainerPage"></div><ons-button id="buttonNextChapter" onclick="OlympiaGuide.Viewer.nextChapter(' + page + ')" style="width:100%; height: 7%" modifier="large">N&auml;chste Station</ons-button></div>');
             OlympiaGuide.Viewer.page = page;
             OlympiaGuide.Viewer.renderProgressCanvas();
             $('#content').html('');
             $('#content').append(mapContainer);
             OlympiaGuide.Viewer.renderMap(false);
-            OlympiaGuide.Viewer.waitForMapEvent(page);
         },
-        waitForMapEvent(page) {
-            let locationX = OlympiaGuide.Viewer.chapterSource[page].mapX;
-            let locationY = OlympiaGuide.Viewer.chapterSource[page].mapY;
-            window.navigator.geolocation
-                    .getCurrentPosition(console.log, console.log);
+        nextChapter(page) {
+            if (OlympiaGuide.Viewer.reachedNextStation) {
+                OlympiaGuide.Viewer.reachedNextStation = false;
+                OlympiaGuide.Viewer.map = undefined;
+                OlympiaGuide.Viewer.showVideoPage(page + 1);
+            } else {
+                showNextChapterDialog();
+            }
         },
         showVideoPage(page) {
             OlympiaGuide.Viewer.page = page;
@@ -140,38 +178,57 @@
             let videoDiv = $(
                 '<div style="width:100%; height: 100%"><div><video style="width:100%; height: 93%" controls>' +
                 '<source src="' + OlympiaGuide.Viewer.chapterSource[page].videoSource + '" type="video/mp4">' +
-                '</video><ons-button onclick="OlympiaGuide.Viewer.showQuiz()" id="quizButton" style="width:100%; height: 7%" modifier="large">Zum Quiz</ons-button></div>');
+                '</video><ons-button onclick="OlympiaGuide.Viewer.showQuiz()" id="quizButton" style="width:100%; height: 7%" modifier="large">' + (typeof OlympiaGuide.Viewer.chapterSource[page].quiz !== 'undefined' ? 'Zum Quiz' : 'Weiter') + '</ons-button></div>');
             $('#content').html('');
             $('#content').append(videoDiv);
         },
         showQuiz() {
-            let page          = OlympiaGuide.Viewer.page;
-            let quizContainer = '<ons-list>';
-            for (let q = 0; q < OlympiaGuide.Viewer.chapterSource[page].quiz.length; q++) {
-                let question = OlympiaGuide.Viewer.chapterSource[page].quiz[q].question;
-                quizContainer += '<ons-list-header>' + question + '</ons-list-header>';
-                for (let a = 0; a < OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers.length; a++) {
-                    let answer = OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers[a];
-                    let radio  = '<div class="mdc-form-field">\n' +
-                        '  <div class="mdc-radio">\n' +
-                        '    <input class="mdc-radio__native-control" type="radio" id="radio_' + a + '_' + q + '" name="radios_' + q + '" checked>\n' +
-                        '    <div class="mdc-radio__background">\n' +
-                        '      <div class="mdc-radio__outer-circle"></div>\n' +
-                        '      <div class="mdc-radio__inner-circle"></div>\n' +
-                        '    </div>\n' +
-                        '    <div class="mdc-radio__ripple"></div>\n' +
-                        '  </div>\n' +
-                        '  <label for="radio-1">' + answer + '</label>\n' +
-                        '</div>';
-                    quizContainer += '<ons-list-item style="font-size:  10px">' + radio + '</ons-list-item>';
-                }
-            }
-            quizContainer += '</ons-list>';
-            quizContainer += '<ons-button onclick="OlympiaGuide.Viewer.showMapPage(' + (page + 1) + ')" modifier="large">Fertig</ons-button>';
+            let page = OlympiaGuide.Viewer.page;
             OlympiaGuide.Viewer.renderProgressCanvas();
-            console.log(quizContainer);
-            $('#content').html('');
-            $('#content').append($(quizContainer));
+            if (typeof OlympiaGuide.Viewer.chapterSource[page].quiz !== 'undefined') {
+                let quizContainer = '<ons-list>';
+                for (let q = 0; q < OlympiaGuide.Viewer.chapterSource[page].quiz.length; q++) {
+                    let question = OlympiaGuide.Viewer.chapterSource[page].quiz[q].question;
+                    quizContainer += '<ons-list-header>' + question + '</ons-list-header>';
+                    for (let a = 0; a < OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers.length; a++) {
+                        let answer = OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers[a];
+                        let radio = '<div class="mdc-form-field">\n' +
+                            '  <div class="mdc-radio">\n' +
+                            '    <input class="mdc-radio__native-control" type="radio" id="radio_' + q + '_' + a + '" name="radios_' + q + '" checked>\n' +
+                            '    <div class="mdc-radio__background">\n' +
+                            '      <div class="mdc-radio__outer-circle"></div>\n' +
+                            '      <div class="mdc-radio__inner-circle"></div>\n' +
+                            '    </div>\n' +
+                            '    <div class="mdc-radio__ripple"></div>\n' +
+                            '  </div>\n' +
+                            '  <label id="label_' + q + '_' + a + '" for="radio-1">' + answer + '</label>\n' +
+                            '</div>';
+                        quizContainer += '<ons-list-item style="font-size:  10px">' + radio + '</ons-list-item>';
+                    }
+                }
+                quizContainer += '</ons-list>';
+                quizContainer += '<ons-button onclick="OlympiaGuide.Viewer.nextStation(' + (page) + ')" modifier="large">Fertig</ons-button>';
+                $('#content').html('');
+                $('#content').append($(quizContainer));
+            } else {
+                OlympiaGuide.Viewer.nextStation(page);
+            }
+        },
+        nextStation: function (page) {
+            if (page + 1 < OlympiaGuide.Viewer.chapterSource.length) {
+                let answers = [];
+                for (let q = 0; typeof OlympiaGuide.Viewer.chapterSource[page].quiz !== 'undefined' && q < OlympiaGuide.Viewer.chapterSource[page].quiz.length; q++) {
+                    for (let a = 0; a < OlympiaGuide.Viewer.chapterSource[page].quiz[q].answers.length; a++) {
+                        if ($('#radio_' + q + '_' + a).prop('checked')) {
+                            answers[q] = $('#label_' + q + '_' + a).html();
+                        }
+                    }
+                    OlympiaGuide.Viewer.filledAnswers[page] = answers;
+                }
+                OlympiaGuide.Viewer.showMapPage(page);
+            } else {
+                //TODO finish
+            }
         },
         showMap: function (page) {
             page.querySelector('#buttonMap').onclick = function () {
@@ -183,17 +240,29 @@
             };
         },
         renderMap: function (mapMenu = true) {
-            let corner1             = L.latLng(48.192583841140596, 11.56491279602051),
-                corner2             = L.latLng(48.156925112380684, 11.532726287841799),
-                bounds              = L.latLngBounds(corner1, corner2);
-            let corner3             = L.latLng(48.18397192562091, 11.55641555786133),
-                corner4             = L.latLng(48.16614266578527, 11.540322303771974),
-                bounds2             = L.latLngBounds(corner3, corner4);
+            let corner1 = L.latLng(48.192583841140596, 11.56491279602051),
+                corner2 = L.latLng(48.156925112380684, 11.532726287841799),
+                bounds = L.latLngBounds(corner1, corner2);
+            let corner3 = L.latLng(48.18397192562091, 11.55641555786133),
+                corner4 = L.latLng(48.16614266578527, 11.540322303771974),
+                bounds2 = L.latLngBounds(corner3, corner4);
             OlympiaGuide.Viewer.map = L.map(
                 mapMenu ? 'mapContainer' : 'mapContainerPage',
                 {maxBounds: bounds}
             ).fitBounds(bounds2).setMaxBounds(bounds).setMinZoom(14);
-            L.control.locate({follow: true}).addTo(OlympiaGuide.Viewer.map);
+            L.control.locate({
+                follow: true,
+                icon: 'material-icons location',
+            }).addTo(OlympiaGuide.Viewer.map);
+            OlympiaGuide.Viewer.map.on('locationfound', function (ev) {
+                let tolerance = 0.0002;
+                let destinationX = OlympiaGuide.Viewer.chapterSource[OlympiaGuide.Viewer.page + 1].mapX;
+                let destinationY = OlympiaGuide.Viewer.chapterSource[OlympiaGuide.Viewer.page + 1].mapY;
+                let locationX = ev.latitude;
+                let locationY = ev.longitude;
+                let diff = Math.sqrt((destinationX - locationX) * (destinationX - locationX) + (destinationY - locationY) * (destinationY - locationY));
+                OlympiaGuide.Viewer.reachedNextStation = (diff <= tolerance);
+            })
 
             L.tileLayer(
                 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiY2Fwcmlzb25uZTE0IiwiYSI6ImNrZGV3N2lqZjA3dW8ycm81MG9rdXB1Y3oifQ.W7sx_PoGrYBPaYCGLQhKzA',
@@ -204,7 +273,7 @@
             ).addTo(OlympiaGuide.Viewer.map);
             OlympiaGuide.Viewer.wayMarker = [];
             for (let i = 0; i < OlympiaGuide.Viewer.chapterSource.length; i++) {
-                let icon                         = L.icon({
+                let icon = L.icon({
                     iconUrl: 'lib/js/leaflet/images/wayMarker/number_' + (i <= OlympiaGuide.Viewer.page ? 'marked_' : '') + (i + 1) + '.png',
                     iconAnchor: [15, 10]
                 });
@@ -217,19 +286,19 @@
             }
         },
         renderProgressCanvas: function () {
-            let page         = OlympiaGuide.Viewer.page;
-            var screenWidth  = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
+            let page = OlympiaGuide.Viewer.page;
+            var screenWidth = document.getElementById('progressBarCanvas').getBoundingClientRect().width;
             var screenHeight = document.getElementById('progressBarCanvas').getBoundingClientRect().height;
-            var canvas       = new fabric.Canvas('progressBarCanvas');
+            var canvas = new fabric.Canvas('progressBarCanvas');
             $('#pageTitle').html(OlympiaGuide.Viewer.chapterSource[page].name);
             canvas.setWidth(screenWidth);
             canvas.setHeight(screenHeight);
-            var i             = 0;
-            var pageCount     = 8;
-            var radius        = (screenWidth * 0.8 / pageCount) / 2;
-            var margin        = screenWidth * 0.2 / 9;
-            var oneStepWidth  = radius * 2 + screenWidth * 0.2 / 9;
-            var left          = margin;
+            var i = 0;
+            var pageCount = OlympiaGuide.Viewer.chapterSource.length;
+            var radius = (screenWidth * 0.8 / pageCount) / 2;
+            var margin = screenWidth * 0.2 / (pageCount + 1);
+            var oneStepWidth = radius * 2 + screenWidth * 0.2 / (pageCount + 1);
+            var left = margin;
             var rectangleFill = new fabric.Rect({
                 left: 0,
                 top: 0,
@@ -264,41 +333,271 @@
         },
         chapterSource: [
             {
-                name: 'Der Olympiaturm',
-                videoSource: 'PS_Olympiaturm_Video.mov',
+                name: 'Olympiaturm',
+                videoSource: 'videos/Olympiaturm.mp4',
                 mapX: 48.174222,
                 mapY: 11.554167,
                 quiz: [
                     {
-                        question: 'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
-                        rightAnswer: 'test',
+                        question: 'Welche Aussage ist richtig?',
+                        rightAnswer: 'Mit 281 Metern ist er nach dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
                         answers: [
-                            'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
-                            'test',
-                            'test'
+                            'Mit 281 Metern ist er nach dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
+                            'Mit 291 Metern ist er vor dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
+                            'Mit 281 Metern ist er nach dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
+                            'Mit 291 Metern ist er nach dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
+                        ]
+                    },
+                    {
+                        question: 'Welche Aussage ist nicht richtig?',
+                        rightAnswer: 'Der Olympiaturm ist ein Fernsehturm in M&uuml;nchen und eines der Wahrzeichen der Landeshauptstadt und des Olympiaparks, in dessen westlichen Teil er steht.',
+                        answers: [
+                            'Der Olympiaturm ist ein Fernsehturm in M&uuml;nchen und eines der Wahrzeichen der Landeshauptstadt und des Olympiaparks, in dessen &ouml;stlichen Teil er steht.',
+                            'Der Olympiaturm ist ein Fernsehturm in M&uuml;nchen und eines der Wahrzeichen der Landeshauptstadt und des Olympiaparks, in dessen westlichen Teil er steht.',
+                            'Bis Ende 2018 bestiegen seit seiner Er&ouml;ffnung 1968 &uuml;ber 43 Millionen Besucher den Turm.',
+                            'Seit 2004 ist auch ein kleines Rockmuseum auf der obersten Etage des Turms zu finden.',
                         ]
                     }
                 ]
             },
             {
-                name: 'Der Olympiaturm2',
-                videoSource: 'PS_Olympiaturm_Video.mov',
-                mapX: 48.174225,
-                mapY: 11.554210,
+                name: 'Schuttblume',
+                videoSource: 'videos/Schuttblume.mp4',
+                mapX: 48.170861,
+                mapY: 11.556056,
                 quiz: [
                     {
-                        question: 'frage',
-                        rightAnswer: 'test',
+                        question: 'Wessen gedenkt die Schuttblume?',
+                        rightAnswer: 'Luftkriegsopfer des zweiten Weltkriegs',
                         answers: [
-                            'Mit 281 Metern ist er nach dem Nürnberger Fernsehturm',
-                            'test',
-                            'test'
+                            'Opfer des Holocaust',
+                            'Luftkriegsopfer des zweiten Weltkriegs',
+                            'Opfer des ersten Weltkriegs',
+                            'Opfer des Attentats',
                         ]
                     }
                 ]
-            }
+            },
+            {
+                name: 'Olympiaberg',
+                videoSource: 'videos/Olympiaberg.mp4',
+                mapX: 48.169917,
+                mapY: 11.551528,
+                quiz: undefined
+            },
+            {
+                name: 'Olympiastadion',
+                videoSource: 'videos/Olympiastadion.mp4',
+                mapX: 48.174056,
+                mapY: 11.548556,
+                quiz: [
+                    {
+                        question: 'Wie viele Pl&auml;tze hat das Olympiastadion?',
+                        rightAnswer: 'Mit 281 Metern ist er nach dem N&uuml;rnberger Fernsehturm Bayerns zweith&ouml;chstes Bauwerk.',
+                        answers: [
+                            '80.000',
+                            '90.000',
+                            '95.000',
+                            '100.000',
+                        ]
+                    },
+                    {
+                        question: 'Wie viel kostete der Bau des Stadions insgesamt?',
+                        rightAnswer: '307 mio DM',
+                        answers: [
+                            '257 mio DM',
+                            '287 mio DM',
+                            '307 mio DM',
+                            '317 mio DM',
+                        ]
+                    }
+                ]
+            },
+            {
+                name: 'Geisterbahnhof',
+                videoSource: 'videos/Geisterbahnhof.mp4',
+                mapX: 48.178806,
+                mapY: 11.539056,
+                quiz: [
+                    {
+                        question: 'Welche S-Bahnlinien fuhren den Bahnhof an?',
+                        rightAnswer: 'S5, S11, S21',
+                        answers: [
+                            'S5, S11, S21',
+                            'S5, S8, S25',
+                            'S6, S12, S55',
+                        ]
+                    },
+                    {
+                        question: 'Welche S-Bahnlinien fuhren den Bahnhof an?',
+                        rightAnswer: '28. April 1972',
+                        answers: [
+                            '23. M&auml;rz 1974',
+                            '28. April 1972',
+                            '28. April 1970',
+                            '8. M&auml;rz 1970',
+                        ]
+                    }
+                ]
+            },
+            {
+                name: 'Hintergr&uuml;nde Attentat',
+                videoSource: 'videos/Hintergr&uuml;nde.mp4',
+                mapX: 48.178611,
+                mapY: 11.540917,
+                quiz: [
+                    {
+                        question: 'Welche Aussage zu den Hintergr&uuml;nden des Attentats ist richtig?',
+                        rightAnswer: 'Es begann als Geiselnahme und endete mit der Ermordung aller elf israelischen Geiseln, sowie mit dem Tod von f&uuml;nf Geiselnehmern und eines Polizisten.',
+                        answers: [
+                            'Es begann als Geiselnahme und endete mit der Ermordung aller zw&ouml;lf israelischen Geiseln, sowie mit dem Tod von vier Geiselnehmern und eines Polizisten.',
+                            'Es begann als Geiselnahme und endete mit der Ermordung aller elf israelischen Geiseln, sowie mit dem Tod von f&uuml;nf Geiselnehmern und keinem Polizisten.',
+                            'Es begann als Geiselnahme und endete mit der Ermordung aller zw&ouml;lf israelischen Geiseln, sowie mit dem Tod von f&uuml;nf Geiselnehmern und eines Polizisten.',
+                            'Es begann als Geiselnahme und endete mit der Ermordung aller elf israelischen Geiseln, sowie mit dem Tod von f&uuml;nf Geiselnehmern und eines Polizisten.'
+                        ]
+                    },
+                    {
+                        question: 'Was waren die Gr&uuml;nde f&uuml;r die Zunahme der j&uuml;dischen Bev&ouml;lkerung im Pal&auml;stinagebiet?',
+                        rightAnswer: 'Die j&uuml;dische Einwanderung in dieses Gebiet hat stark zugenommen, durch die Begr&uuml;ndung der zionistischen Bewegung 1897.  Ziel der Zionisten war die R&uuml;ckkehr der Juden in ihre biblisch &uuml;berlieferte Heimat und die Gr&uuml;ndung eines eigenen j&uuml;dischen Staates.',
+                        answers: [
+                            'Aufgrund von Platzmangel und vielen nat&uuml;rlichen Ressourcen emigrierten viele Juden in das Pal&auml;stinagebiet',
+                            'Die j&uuml;dische Einwanderung in dieses Gebiet hat stark zugenommen, durch die Verfolgung der Juden in anderen Gebieten, ausgehend von der Begr&uuml;ndung der zionistischen Bewegung 1897.',
+                            'Die j&uuml;dische Einwanderung in dieses Gebiet hat stark zugenommen, durch die Begr&uuml;ndung der zionistischen Bewegung 1897.  Ziel der Zionisten war die R&uuml;ckkehr der Juden in ihre biblisch &uuml;berlieferte Heimat und die Gr&uuml;ndung eines eigenen j&uuml;dischen Staates.',
+                            'Gro&szlig;britannien hatte w&auml;hrend des ersten Weltkriegs ausschlie&szlig;lich der j&uuml;dischen Seite die &uuml;berlassung Pal&auml;stinas zugesichert.',
+                        ]
+                    },
+                    {
+                        question: 'Was passierte nach der Abgabe des britischen Mandates?',
+                        rightAnswer: 'Ein Teilungsplan wurde beschlossen, dieser Teilungsplan wurde von gro&szlig;en Teilen der j&uuml;dischen Seite begr&uuml;&szlig;t, von der arabischen Bev&ouml;lkerung jedoch abgelehnt.',
+                        answers: [
+                            'Die Vereinigten Nationen schickten Truppen, um gegen die Briten, sowie j&uuml;dische und arabische Gruppierungen zu bek&auml;mpfen.',
+                            'Ein Teilungsplan wurde beschlossen, dieser Teilungsplan wurde von gro&szlig;en Teilen der j&uuml;dischen Seite begr&uuml;&szlig;t, von der arabischen Bev&ouml;lkerung jedoch abgelehnt.',
+                            'Ein Teilungsplan wurde beschlossen, dieser Teilungsplan wurde von gro&szlig;en Teilen der arabischen Seite begr&uuml;&szlig;t, von der j&uuml;dischen Bev&ouml;lkerung jedoch abgelehnt.',
+                            'Die Vereinigten Nationen haben beschlossen, dieses Gebiet unter den Mitgliedsstaaten aufzuteilen.',
+                        ]
+                    },
+                    {
+                        question: 'Welche Aussage ist nicht richtig?',
+                        rightAnswer: 'Durch die Gr&uuml;ndung des Staates Israel und den Konflikt um die Pal&auml;stina Region, gibt es immer mehr bewaffnete Auseinandersetzungen zwischen Gro&szlig;britannien und den Vereinigten Nationen.',
+                        answers: [
+                            'Durch die Gr&uuml;ndung des Staates Israel und den Konflikt um die Pal&auml;stina Region, gibt es immer mehr bewaffnete Auseinandersetzungen zwischen Gro&szlig;britannien und den Vereinigten Nationen.',
+                            'Am 14. Mai 1948 ist der Tag der Niederlegung des britischen Mandats.',
+                            'Der F&uuml;hrer der zionistisch-sozialistischen Arbeiterpartei Israels, David Ben-Gurion, rief den Staat Israel aus.',
+                            'Die arabischen Nachbarl&auml;nder reagierten sofort mit einem Angriff auf den neugegr&uuml;ndeten Staat Israel, Israel gewann schlie&szlig;lich den Existenzkrieg.',
+                        ]
+                    }
+                ]
+            },
+            {
+                name: 'Schwarzer September',
+                videoSource: 'videos/Terroristen.mp4',
+                mapX: 48.176778,
+                mapY: 11.547722,
+                quiz: [
+                    {
+                        question: 'Welche Aussage ist nicht richtig?',
+                        rightAnswer: 'Die Organisation Schwarzer September ist eine gewaltfreie Organisation.',
+                        answers: [
+                            'Aus der Pal&auml;stinensischen Befreiungsorganisation (PLO), gingen die acht Terroristen des Schwarzen Septembers hervor, die verantwortlich f&uuml;r die Geiselnahme der Olympischen Spiele waren.',
+                            'Die blutigen Auseinandersetzungen zwischen Pal&auml;stinensern und den Truppen von K&ouml;nig Hussein werden als Schwarzen September bezeichnet. ',
+                            'Die Organisation Schwarzer September ist eine gewaltfreie Organisation.',
+                            'Als Konsequenz des milit&auml;rischen Scheiterns gegen Israel verlegten sich pal&auml;stinensische Organisationen auf eine Internationalisierung ihres Kampfes gegen Israel.'
+                        ]
+                    },
+                    {
+                        question: 'Welche Aussage ist richtig?',
+                        rightAnswer: 'Als Reaktion auf die versuchte Ermordung von K&ouml;nig Hussein, vertrieb der K&ouml;nig einen Gro&szlig;teil der Pal&auml;stinenser und ihrer Organisationen aus Jordanien.',
+                        answers: [
+                            'Die PLO hatte versucht einen eigenen Staat im Staat im Jemen zu gr&uuml;nden, dieser wurde jedoch vereitelt.',
+                            'Als Reaktion auf die versuchte Ermordung von K&ouml;nig Hussein, vertrieb der K&ouml;nig einen Gro&szlig;teil der Pal&auml;stinenser und ihrer Organisationen aus Jordanien.',
+                            'Bei dem Versuch die Pal&auml;stinenser zu vertreiben, verlie&szlig;en die Plastinier das Land ohne Wiederstand. ',
+                            'Als Reaktion auf die versuchte Ermordung von K&ouml;nig Hussein, vertrieb der K&ouml;nig einen Gro&szlig;teil der Pal&auml;stinenser und ihrer Organisationen aus dem Jemen.',
+                        ]
+                    },
+                ]
+            },
+            {
+                name: 'Verlauf Attentat',
+                videoSource: 'videos/Attentatsverlauf.mp4',
+                mapX: 48.176722,
+                mapY: 11.54775,
+                quiz: [
+                    {
+                        question: 'Um wie viel Uhr kletterten die Terroristen &uuml;ber den Zaun?',
+                        rightAnswer: '4:20',
+                        answers: [
+                            '4:20',
+                            '4:35',
+                            '4:30'
+                        ]
+                    },
+                    {
+                        question: 'Wie viele Geiseln wurden genommen?',
+                        rightAnswer: '11',
+                        answers: [
+                            '21',
+                            '12',
+                            '11'
+                        ]
+                    },
+                    {
+                        question: 'Wie viele Geiseln &uuml;berlebten?',
+                        rightAnswer: 'keine',
+                        answers: [
+                            'Alle',
+                            '5',
+                            '1',
+                            'keine'
+                        ]
+                    },
+                ]
+            },
+            {
+                name: 'Denkmal Einschnitt',
+                videoSource: 'videos/Gedenkort.mp4',
+                mapX: 48.177972,
+                mapY: 11.549806,
+                quiz: [
+                    {
+                        question: 'Wie viele Opfer des Anschlags auf die Olympischen Spiele 1972 gab es?',
+                        rightAnswer: 'Zw&ouml;lf Opfer, davon elf israelische Sportler und ein Polizist',
+                        answers: [
+                            'Zw&ouml;lf Opfer, davon elf israelische Sportler und ein Polizist',
+                            'Zw&ouml;lf Opfer, davon zehn israelische Sportler und zwei Polizist',
+                            'Elf Opfer, davon zehn israelische Sportler und ein Polizist',
+                            'Elf Opfer, davon elf israelische Sportler und kein Polizist',
+                        ]
+                    },
+                ]
+            },
+            {
+                name: 'Konsequenzen Attentat',
+                videoSource: 'videos/Attentatsverlauf.mp4',
+                mapX: 48.178083,
+                mapY: 11.550083,
+                quiz: [
+                    {
+                        question: 'Welche Folgen hatte das Attentat?',
+                        rightAnswer: 'Die GSG 9 wurde gegr&uuml;ndet',
+                        answers: [
+                            'Die Spiele wurden abgebrochen',
+                            'Die Terroristen wurden gefasst und verurteilt',
+                            'Die GSG 9 wurde gegr&uuml;ndet',
+                        ]
+                    },
+                    {
+                        question: 'Welche Fehler machten die Verantwortlichen?',
+                        rightAnswer: 'Die Beh&ouml;rden kommunizierten sehr schlecht untereinander',
+                        answers: [
+                            'Die Scharfsch&uuml;tzen kannten die Namen der Attent&auml;ter nicht',
+                            'Die Attent&auml;ter konnten in den Socialmedia ihre Verfolgung live mitverfolgen',
+                            'Die Beh&ouml;rden kommunizierten sehr schlecht untereinander',
+                        ]
+                    },
+                ]
+            },
         ],
-    }
-    ;
+        filledAnswers: []
+    };
     OlympiaGuide.Viewer.init();
 </script>
