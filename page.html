@@ -11,16 +11,18 @@
         </div>
     </ons-dialog>
 </template>
-<template id="pageMap.html">
-    <ons-page id="pageMap">
-        <ons-toolbar>
-            <div class="left">
-                <ons-back-button>Zur&uuml;ck</ons-back-button>
-            </div>
-            <div class="center"></div>
-        </ons-toolbar>
-        <div style="width:100%;height:100%;" id="mapContainer"></div>
-    </ons-page>
+<template id="dialogMenuConfirm.html">
+    <ons-dialog id="menu-dialog-confirm">
+        <div style="text-align: center; padding: 10px;">
+            <p>
+                Beenden und zur&uuml;ck zum Hauptmen&uuml;?
+            </p>
+            <p>
+                <ons-button onclick="hideMenuDialog(true)">Ok</ons-button>
+                <ons-button onclick="hideMenuDialog(false)">Abbrechen</ons-button>
+            </p>
+        </div>
+    </ons-dialog>
 </template>
 <template id="pageChapter.html">
     <ons-page id="pageChapter" style="font-size: 7%">
@@ -115,7 +117,9 @@
         document
             .getElementById('menu-dialog-confirm')
             .hide();
-        OlympiaGuide.Viewer.reset();
+        if (returnToHome) {
+            OlympiaGuide.Viewer.reset();
+        }
     };
 
     var hideNextChapterDialog = function () {
@@ -126,6 +130,7 @@
     OlympiaGuide.Viewer = {
         map: undefined,
         mapPage: undefined,
+        locateControl: undefined,
         page: undefined,
         wayMarker: undefined,
         reachedNextStation: false,
@@ -136,11 +141,6 @@
                 if (!OlympiaGuide.Viewer.initFinished) {
                     OlympiaGuide.Viewer.showIntroduction();
                     OlympiaGuide.Viewer.initFinished = true;
-                }
-                if (page.id === 'pageChapter') {
-                    OlympiaGuide.Viewer.showMap(page);
-                } else if (page.id === 'pageMap') {
-                    page.querySelector('ons-toolbar .center').innerHTML = page.data.title;
                 }
             });
         },
@@ -157,6 +157,7 @@
         },
         reset() {
             OlympiaGuide.Viewer.map = undefined;
+            OlympiaGuide.Viewer.locateControl = undefined;
             OlympiaGuide.Viewer.mapPage = undefined;
             OlympiaGuide.Viewer.page = undefined;
             OlympiaGuide.Viewer.wayMarker = undefined;
@@ -169,14 +170,20 @@
             let mapContainer = $('<div style="width:100%; height:93%" id="mapContainerPage"></div><ons-button id="buttonNextChapter" onclick="OlympiaGuide.Viewer.nextChapter(' + page + ')" style="width:100%; height: 7%" modifier="large">N&auml;chste Station</ons-button></div>');
             OlympiaGuide.Viewer.page = page;
             OlympiaGuide.Viewer.renderProgressCanvas();
+            OlympiaGuide.Viewer.map = undefined;
+            $('#mapContainerPage').remove();
+            $('#mapContainer').remove();
             $('#content').html('');
             $('#content').append(mapContainer);
-            OlympiaGuide.Viewer.renderMap(false);
+            OlympiaGuide.Viewer.renderMap();
         },
         nextChapter(page) {
             if (OlympiaGuide.Viewer.reachedNextStation) {
                 OlympiaGuide.Viewer.reachedNextStation = false;
+                OlympiaGuide.Viewer.map.remove();
                 OlympiaGuide.Viewer.map = undefined;
+                OlympiaGuide.Viewer.locateControl.remove();
+                OlympiaGuide.Viewer.locateControl = undefined;
                 OlympiaGuide.Viewer.showVideoPage(page + 1);
             } else {
                 showNextChapterDialog();
@@ -268,16 +275,7 @@
                 OlympiaGuide.Viewer.showResultPage();
             }
         },
-        showMap: function (page) {
-            page.querySelector('#buttonMap').onclick = function () {
-                document.querySelector('#myNavigator').pushPage('pageMap.html', {data: {title: 'Karte'}});
-                setTimeout(function () {
-                        OlympiaGuide.Viewer.renderMap();
-                    }, 1
-                );
-            };
-        },
-        renderMap: function (mapMenu = true) {
+        renderMap: function () {
             let corner1 = L.latLng(48.192583841140596, 11.56491279602051),
                 corner2 = L.latLng(48.156925112380684, 11.532726287841799),
                 bounds = L.latLngBounds(corner1, corner2);
@@ -285,10 +283,10 @@
                 corner4 = L.latLng(48.16614266578527, 11.540322303771974),
                 bounds2 = L.latLngBounds(corner3, corner4);
             OlympiaGuide.Viewer.map = L.map(
-                mapMenu ? 'mapContainer' : 'mapContainerPage',
+                'mapContainerPage',
                 {maxBounds: bounds}
             ).fitBounds(bounds2).setMaxBounds(bounds).setMinZoom(14);
-            L.control.locate({
+            OlympiaGuide.Viewer.locateControl = L.control.locate({
                 follow: true,
                 icon: 'material-icons location',
             }).addTo(OlympiaGuide.Viewer.map);
