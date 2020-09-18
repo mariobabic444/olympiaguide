@@ -128,9 +128,7 @@
         document
             .getElementById('menu-dialog-confirm')
             .hide();
-        if (returnToHome) {
-            window.location.href = "index.html"
-        }
+        OlympiaGuide.Viewer.reset();
     };
 
     var hideNextChapterDialog = function () {
@@ -144,16 +142,33 @@
         page: undefined,
         wayMarker: undefined,
         reachedNextStation: false,
+        initFinished: false,
         init: function () {
             document.addEventListener('init', function (event) {
                 var page = event.target;
-                OlympiaGuide.Viewer.showVideoPage(0);
+                if (!OlympiaGuide.Viewer.initFinished) {
+                    OlympiaGuide.Viewer.showIntroduction();
+                    OlympiaGuide.Viewer.initFinished = true;
+                }
                 if (page.id === 'pageChapter') {
                     OlympiaGuide.Viewer.showMap(page);
                 } else if (page.id === 'pageMap') {
                     page.querySelector('ons-toolbar .center').innerHTML = page.data.title;
                 }
             });
+        },
+        showIntroduction() {
+            OlympiaGuide.Viewer.showVideoPage(0);
+        },
+        reset() {
+            OlympiaGuide.Viewer.map = undefined;
+            OlympiaGuide.Viewer.mapPage = undefined;
+            OlympiaGuide.Viewer.page = undefined;
+            OlympiaGuide.Viewer.wayMarker = undefined;
+            OlympiaGuide.Viewer.reachedNextStation = false;
+            OlympiaGuide.Viewer.initFinished = false;
+            OlympiaGuide.Viewer.filledAnswers = [];
+            window.location.href = "index.html";
         },
         showMapPage(page) {
             let mapContainer = $('<div style="width:100%; height:93%" id="mapContainerPage"></div><ons-button id="buttonNextChapter" onclick="OlympiaGuide.Viewer.nextChapter(' + page + ')" style="width:100%; height: 7%" modifier="large">N&auml;chste Station</ons-button></div>');
@@ -214,6 +229,34 @@
                 OlympiaGuide.Viewer.nextStation(page);
             }
         },
+        showResultPage: function () {
+            let listContainer = '';
+            let pagCountWithoutQuiz = 0;
+            let answersAll = 0;
+            let answersRight = 0;
+            for (let page = 0; page < OlympiaGuide.Viewer.chapterSource.length - pagCountWithoutQuiz; page++) {
+                let chapter = OlympiaGuide.Viewer.chapterSource[page];
+                if (typeof chapter.quiz !== 'undefined') {
+                    for (let q = 0; q < chapter.quiz.length; q++) {
+                        let quiz = chapter.quiz[q];
+                        listContainer += '<ons-list-header>' + quiz.question + '</ons-list-header>';
+                        answersAll++;
+                        if (OlympiaGuide.Viewer.filledAnswers[page][q] === quiz.rightAnswer) {
+                            answersRight++;
+                            listContainer += '<ons-list-item style="font-weight:700; font-family:Roboto, sans-serif; font-size:  14px; color: #1b721a">Deine Antwort: ' + OlympiaGuide.Viewer.filledAnswers[page][q] + '</ons-list-item>';
+                        } else {
+                            listContainer += '<ons-list-item style="font-weight:700; font-family:Roboto, sans-serif; font-size:  14px; color: #D9050C">Deine Antwort: ' + OlympiaGuide.Viewer.filledAnswers[page][q] + '</ons-list-item>';
+                            listContainer += '<ons-list-item style="font-weight:700; font-family:Roboto, sans-serif; font-size:  14px; color: #1b721a"">Richtige Antwort: ' + quiz.rightAnswer + '</ons-list-item>';
+                        }
+                    }
+                } else {
+                    pagCountWithoutQuiz++;
+                }
+            }
+            listContainer = '<ons-list><ons-list-item><h2>Gl&uuml;ckwunsch! ' + answersRight + ' von ' + answersAll + ' Antworten richtig!</h2></ons-list-item>' + listContainer + '</ons-list>';
+            $('#content').html('');
+            $('#content').append($(listContainer));
+        },
         nextStation: function (page) {
             if (page + 1 < OlympiaGuide.Viewer.chapterSource.length) {
                 let answers = [];
@@ -227,7 +270,7 @@
                 }
                 OlympiaGuide.Viewer.showMapPage(page);
             } else {
-                //TODO finish
+                OlympiaGuide.Viewer.showResultPage();
             }
         },
         showMap: function (page) {
