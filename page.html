@@ -1,16 +1,3 @@
-<template id="dialogMenuConfirm.html">
-    <ons-dialog id="menu-dialog-confirm">
-        <div style="text-align: center; padding: 10px;">
-            <p>
-                Beenden und zur&uuml;ck zum Hauptmen&uuml;?
-            </p>
-            <p>
-                <ons-button onclick="hideMenuDialog(true)">Ok</ons-button>
-                <ons-button onclick="hideMenuDialog(false)">Abbrechen</ons-button>
-            </p>
-        </div>
-    </ons-dialog>
-</template>
 <template id="dialogNextChapterConfirm.html">
     <ons-dialog id="next-chapter-dialog-confirm">
         <div style="text-align: center; padding: 10px;">
@@ -158,7 +145,15 @@
             });
         },
         showIntroduction() {
-            OlympiaGuide.Viewer.showVideoPage(0);
+            OlympiaGuide.Viewer.page = 0;
+            OlympiaGuide.Viewer.renderProgressCanvas();
+            let videoDiv = $(
+                '<div style="width:100%; height: 100%"><div><video style="width:100%; height: 93%" controls>' +
+                '<source src="videos/Einleitung.mp4" type="video/mp4">' +
+                '</video><ons-button onclick="OlympiaGuide.Viewer.showVideoPage(0);" id="introductionButton" style="width:100%; height: 7%" modifier="large">Zum Guide</ons-button></div>');
+            $('#pageTitle').html('Einleitung');
+            $('#content').html('');
+            $('#content').append(videoDiv);
         },
         reset() {
             OlympiaGuide.Viewer.map = undefined;
